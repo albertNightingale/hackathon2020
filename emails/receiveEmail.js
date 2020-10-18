@@ -2,17 +2,20 @@ const fs = require('fs');
 const { google } = require('googleapis');
 const credentialAuthorize = require('../credential');
 
-module.exports = function getEmailList() {
+let ls = []
 
-  let ls = new Map()
+module.exports = async function getEmailList() {
 
-  fs.readFile('credential/credentials.json', (err, content) => {
+  await fs.readFile('credential/credentials.json', (err, content) => {
     if (err) return console.log('Error loading client secret file:', err);
     // Authorize a client with credentials, then call the Gmail API.
-    (async () => {
-      await credentialAuthorize(JSON.parse(content), listEmails);
-    })().then(res => console.log(ls.size));
+     (async () => {
+       await credentialAuthorize(JSON.parse(content), listEmails);
+     })().then( () => console.log(ls));
   });
+
+  // console.log(ls)
+  return ls;
 }
 
 /****
@@ -32,7 +35,8 @@ function listEmails(auth) {
 
     if (gmailMessageList.length) {
       for (var messageIdx = 0; messageIdx < gmailMessageList.length; messageIdx++) {
-        getOneEmail(auth, gmailMessageList[messageIdx]);
+        var obj = getOneEmail(auth, gmailMessageList[messageIdx]);
+        ls.push(obj);
       }
     }
     else {
@@ -65,7 +69,10 @@ function getOneEmail(auth, messageIDObj) {
     }
 
     // email ID
-    var messageID = res.data.payload.headers.find(header => header.name === 'Message-ID').value;
+    var id = res.data.payload.headers.find(header => header.name === 'Message-ID')
+    if (id === undefined) return;
+    
+    messageID = id.value;
 
     // label
     var labelId = res.data.labelIds.find(label => label === 'UNREAD')
@@ -89,10 +96,9 @@ function getOneEmail(auth, messageIDObj) {
         body: decodedPlainContent
       }
 
-      ls.set(emailObject.messageID, emailObject);
-      console.log(ls.size); 
-
-      console.log(emailObject, '\n\n');
+      return emailObject;
+      // ls.set(emailObject.messageID, emailObject);
+      // console.log(emailObject, '\n\n');
     }
 
   })
